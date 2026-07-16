@@ -5,6 +5,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // HTTPS con certificado autofirmado: necesario para que el navegador
 // del celular entregue geolocalización cuando accede por IP de red local.
-export default defineConfig({
-  plugins: [react(), tailwindcss(), basicSsl()],
-});
+// `npm run dev:http` (modo http) lo desactiva para pruebas locales.
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), tailwindcss(), ...(mode === 'http' ? [] : [basicSsl()])],
+}));

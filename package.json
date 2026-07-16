@@ -6,6 +6,7 @@
   "description": "LATIDO — Plataforma de monitoreo inteligente para proteger a quienes más quieres.",
   "scripts": {
     "dev": "vite --host",
+    "dev:http": "vite --host --mode http",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host"
   },
