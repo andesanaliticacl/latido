@@ -37,9 +37,9 @@ export function Zonas() {
   };
 
   return (
-    <div className="flex h-full gap-4 p-4">
+    <div className="flex h-full flex-col gap-4 p-4 lg:flex-row">
       {/* Mapa para elegir el centro de la zona */}
-      <div className="min-w-0 flex-[7]">
+      <div className="h-[45vh] min-w-0 shrink-0 lg:h-auto lg:flex-[7]">
         <MapView
           posicion={posicion}
           zonas={zonas}
@@ -48,7 +48,7 @@ export function Zonas() {
         />
       </div>
 
-      <div className="flex flex-[3] flex-col gap-4 overflow-y-auto pr-1">
+      <div className="flex flex-col gap-4 lg:flex-[3] lg:overflow-y-auto lg:pr-1">
         {/* Formulario */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-bold">Nueva zona</h2>

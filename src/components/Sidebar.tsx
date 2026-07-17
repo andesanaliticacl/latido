@@ -1,41 +1,20 @@
 import { NavLink } from 'react-router-dom';
-import {
-  Bell,
-  HeartPulse,
-  History,
-  LayoutDashboard,
-  MapPinned,
-  Moon,
-  Phone,
-  Smartphone,
-  Sun,
-  ToggleLeft,
-  UserRound,
-} from 'lucide-react';
+import { Moon, Smartphone, Sun } from 'lucide-react';
 import { useLatido } from '../state/LatidoStore';
-
-const ITEMS = [
-  { a: '/', icono: LayoutDashboard, texto: 'Inicio', exacto: true },
-  { a: '/monitoreo', icono: HeartPulse, texto: 'Monitoreo' },
-  { a: '/historial', icono: History, texto: 'Historial' },
-  { a: '/comunicacion', icono: Phone, texto: 'Comunicación' },
-  { a: '/zonas', icono: MapPinned, texto: 'Zonas seguras' },
-  { a: '/alertas', icono: Bell, texto: 'Alertas' },
-  { a: '/control', icono: ToggleLeft, texto: 'Control parental' },
-  { a: '/perfil', icono: UserRound, texto: 'Perfil' },
-];
+import { NAV_ITEMS } from './navItems';
 
 interface Props {
   oscuro: boolean;
   onCambiarTema: () => void;
 }
 
+/** Barra lateral del panel — visible solo en escritorio (lg+) */
 export function Sidebar({ oscuro, onCambiarTema }: Props) {
   const { eventos, enLinea } = useLatido();
   const pendientes = eventos.filter((e) => !e.acknowledged && e.type !== 'info').length;
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-slate-200 bg-white px-3 py-5 dark:border-slate-800 dark:bg-slate-900">
+    <aside className="hidden h-screen w-60 shrink-0 flex-col border-r border-slate-200 bg-white px-3 py-5 lg:flex dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-6 flex items-center gap-2 px-2">
         <span className="animate-heartbeat text-2xl">💙</span>
         <div>
@@ -49,7 +28,7 @@ export function Sidebar({ oscuro, onCambiarTema }: Props) {
       </div>
 
       <nav className="flex-1 space-y-1">
-        {ITEMS.map(({ a, icono: Icono, texto, exacto }) => (
+        {NAV_ITEMS.map(({ a, icono: Icono, texto, exacto }) => (
           <NavLink
             key={a}
             to={a}
