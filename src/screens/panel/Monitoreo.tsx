@@ -7,8 +7,12 @@ import { zonasQueContienen } from '../../lib/geo';
 export function Monitoreo() {
   const { ultima, zonas, enLinea, sosActivo, device, eventos } = useLatido();
   const posicion = ultima ? { lat: ultima.lat, lng: ultima.lng } : null;
-  const zonaActual = posicion ? zonasQueContienen(posicion, zonas)[0] : undefined;
+  const zonasContiene = posicion ? zonasQueContienen(posicion, zonas) : [];
+  const zonaSegura = zonasContiene.find((z) => z.kind === 'safe');
+  const zonaRiesgo = zonasContiene.find((z) => z.kind === 'risk');
   const alertasPendientes = eventos.filter((e) => !e.acknowledged && e.type !== 'info').length;
+  const bateriaCasiAgotada = Boolean(ultima && ultima.battery <= 10);
+  const bateriaBaja = Boolean(ultima && ultima.battery < 20);
   const nombre = device?.wearer_name ?? '—';
 
   const tarjetas = [
@@ -28,21 +32,33 @@ export function Monitoreo() {
     {
       icono: '📍',
       titulo: 'Ubicación',
-      valor: zonaActual ? `${zonaActual.icon} ${zonaActual.name}` : posicion ? 'En movimiento' : 'Sin datos',
-      detalle: zonaActual
-        ? zonaActual.kind === 'safe'
-          ? 'Está en una zona segura'
-          : '⚠️ Está en una zona de riesgo'
-        : 'Fuera de zonas conocidas',
-      alerta: zonaActual?.kind === 'risk',
+      valor: zonaSegura
+        ? `${zonaSegura.icon} ${zonaSegura.name}`
+        : zonaRiesgo
+          ? `${zonaRiesgo.icon} ${zonaRiesgo.name}`
+          : posicion
+            ? 'Fuera de lugar seguro'
+            : 'Sin datos',
+      detalle: zonaSegura
+        ? 'En un lugar seguro registrado'
+        : zonaRiesgo
+          ? '⚠️ Está en una zona de riesgo'
+          : posicion
+            ? 'No se encuentra en un lugar seguro registrado'
+            : 'Esperando ubicación del reloj',
+      alerta: Boolean(zonaRiesgo) || Boolean(posicion && !zonaSegura),
       a: '/',
     },
     {
-      icono: '🔋',
+      icono: bateriaCasiAgotada ? '🪫' : '🔋',
       titulo: 'Batería',
       valor: ultima ? `${ultima.battery}%` : 'Sin datos',
-      detalle: ultima && ultima.battery < 20 ? 'Recuérdale cargar el reloj' : 'Batería suficiente',
-      alerta: Boolean(ultima && ultima.battery < 20),
+      detalle: bateriaCasiAgotada
+        ? '¡Casi agotada! Puede quedar sin conexión pronto'
+        : bateriaBaja
+          ? 'Batería baja, recuérdale cargar el reloj'
+          : 'Batería suficiente',
+      alerta: bateriaBaja,
       a: '/perfil',
     },
     {

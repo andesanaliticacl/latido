@@ -3,6 +3,7 @@ import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import { LatidoProvider } from './state/LatidoStore';
 import { Sidebar } from './components/Sidebar';
+import { MobileHeader, MobileNav } from './components/MobileNav';
 import { SosBanner } from './components/SosBanner';
 import { Dashboard } from './screens/panel/Dashboard';
 import { Monitoreo } from './screens/panel/Monitoreo';
@@ -33,10 +34,12 @@ function PanelLayout() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar oscuro={oscuro} onCambiarTema={alternar} />
       <div className="flex min-w-0 flex-1 flex-col">
+        <MobileHeader />
         <SosBanner />
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto pb-16 lg:pb-0">
           <Outlet />
         </main>
+        <MobileNav oscuro={oscuro} onCambiarTema={alternar} />
       </div>
     </div>
   );
