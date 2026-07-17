@@ -1,38 +1,86 @@
 import { useEffect, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Toggle } from '../../components/Toggle';
 import { useLatido } from '../../state/LatidoStore';
 
-interface AppItem {
+interface SubApp {
   nombre: string;
-  icono: string;
   permitida: boolean;
 }
 
+/** Un "conglomerado": una categoría que agrupa varias apps individuales */
+interface Categoria {
+  clave: string;
+  nombre: string;
+  icono: string;
+  permitida: boolean;
+  items: SubApp[];
+}
+
 interface Config {
+  categorias: Categoria[];
   horarioEscolar: boolean;
   modoDescanso: boolean;
   modoEmergencia: boolean;
-  apps: AppItem[];
 }
 
 const CONFIG_INICIAL: Config = {
   horarioEscolar: true,
   modoDescanso: false,
   modoEmergencia: false,
-  apps: [
-    { nombre: 'Llamadas familia', icono: '📞', permitida: true },
-    { nombre: 'Mensajes de voz', icono: '🎙️', permitida: true },
-    { nombre: 'Cámara', icono: '📷', permitida: true },
-    { nombre: 'Juegos', icono: '🎮', permitida: false },
-    { nombre: 'Música', icono: '🎵', permitida: true },
-    { nombre: 'Pagos', icono: '💳', permitida: false },
+  categorias: [
+    {
+      clave: 'comunicacion',
+      nombre: 'Comunicación',
+      icono: '📞',
+      permitida: true,
+      items: [
+        { nombre: 'Llamadas familia', permitida: true },
+        { nombre: 'Mensajes de voz', permitida: true },
+        { nombre: 'Videollamada', permitida: false },
+      ],
+    },
+    {
+      clave: 'juegos',
+      nombre: 'Juegos',
+      icono: '🎮',
+      permitida: true,
+      items: [
+        { nombre: 'Rompecabezas', permitida: true },
+        { nombre: 'Juego de memoria', permitida: true },
+        { nombre: 'Colorear', permitida: true },
+        { nombre: 'Matemáticas divertidas', permitida: true },
+        { nombre: 'Carreras', permitida: false },
+      ],
+    },
+    {
+      clave: 'multimedia',
+      nombre: 'Multimedia',
+      icono: '🎵',
+      permitida: true,
+      items: [
+        { nombre: 'Cámara', permitida: true },
+        { nombre: 'Música', permitida: true },
+        { nombre: 'Galería de fotos', permitida: true },
+      ],
+    },
+    {
+      clave: 'pagos',
+      nombre: 'Pagos',
+      icono: '💳',
+      permitida: false,
+      items: [
+        { nombre: 'Pago escolar', permitida: false },
+        { nombre: 'Kiosco', permitida: false },
+      ],
+    },
   ],
 };
 
-const CLAVE_LS = 'latido.control-parental';
+const CLAVE_LS = 'latido.control-parental.v2';
 
-/** Control parental: interruptores simples, cero menús técnicos.
- *  MVP: se guarda localmente; en Fase 2 viaja al reloj. */
+/** Control parental: interruptores simples con categorías que se despliegan.
+ *  MVP: se guarda localmente; en Fase 2 la configuración viaja al reloj. */
 export function ControlParental() {
   const { device } = useLatido();
   const [config, setConfig] = useState<Config>(() => {
@@ -43,6 +91,7 @@ export function ControlParental() {
       return CONFIG_INICIAL;
     }
   });
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     localStorage.setItem(CLAVE_LS, JSON.stringify(config));
@@ -75,8 +124,32 @@ export function ControlParental() {
     { etiqueta: 'Pantalla total', icono: '⌚', minutos: 47, max: 120 },
   ];
 
+  const alternarAbierta = (clave: string) =>
+    setAbiertas((prev) => {
+      const s = new Set(prev);
+      if (s.has(clave)) s.delete(clave);
+      else s.add(clave);
+      return s;
+    });
+
+  const setCategoria = (clave: string, cambios: Partial<Categoria>) =>
+    setConfig((c) => ({
+      ...c,
+      categorias: c.categorias.map((cat) => (cat.clave === clave ? { ...cat, ...cambios } : cat)),
+    }));
+
+  const setItem = (clave: string, indice: number, permitida: boolean) =>
+    setConfig((c) => ({
+      ...c,
+      categorias: c.categorias.map((cat) =>
+        cat.clave === clave
+          ? { ...cat, items: cat.items.map((it, i) => (i === indice ? { ...it, permitida } : it)) }
+          : cat,
+      ),
+    }));
+
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <div className="mx-auto max-w-3xl p-4 sm:p-6">
       <h1 className="text-2xl font-bold">Control parental</h1>
       <p className="mt-1 text-slate-500 dark:text-slate-400">
         Configura el reloj de {device?.wearer_name ?? 'tu persona protegida'} con interruptores simples.
@@ -103,40 +176,98 @@ export function ControlParental() {
         ))}
       </div>
 
-      {/* Apps */}
+      {/* Aplicaciones por categoría */}
       <h2 className="mt-8 text-lg font-bold">Aplicaciones del reloj</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        Decide qué puede usar y qué no.
+        Activa una categoría y elige, dentro de ella, qué apps permitir.
       </p>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {config.apps.map((app, i) => (
-          <div
-            key={app.nombre}
-            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
-          >
-            <span className="text-2xl">{app.icono}</span>
-            <div className="flex-1">
-              <div className="font-medium">{app.nombre}</div>
-              <div
-                className={`text-xs font-semibold ${
-                  app.permitida ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
-                }`}
-              >
-                {app.permitida ? 'Permitida' : 'Bloqueada'}
+      <div className="mt-3 space-y-3">
+        {config.categorias.map((cat) => {
+          const abierta = abiertas.has(cat.clave);
+          const permitidas = cat.items.filter((i) => i.permitida).length;
+          return (
+            <div
+              key={cat.clave}
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+            >
+              {/* Cabecera de la categoría */}
+              <div className="flex items-center gap-3 p-4">
+                <button
+                  type="button"
+                  onClick={() => alternarAbierta(cat.clave)}
+                  className="flex flex-1 items-center gap-3 text-left"
+                  aria-expanded={abierta}
+                >
+                  <span className="text-2xl">{cat.icono}</span>
+                  <div className="flex-1">
+                    <div className="font-semibold">{cat.nombre}</div>
+                    <div
+                      className={`text-xs font-semibold ${
+                        cat.permitida
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {cat.permitida
+                        ? `${permitidas} de ${cat.items.length} permitidas`
+                        : 'Categoría bloqueada'}
+                    </div>
+                  </div>
+                  <ChevronDown
+                    size={20}
+                    className={`text-slate-400 transition-transform ${abierta ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                <Toggle
+                  activo={cat.permitida}
+                  etiqueta={cat.nombre}
+                  onCambio={(v) => {
+                    setCategoria(cat.clave, { permitida: v });
+                    if (v && !abierta) alternarAbierta(cat.clave);
+                  }}
+                />
               </div>
+
+              {/* Listado anidado de apps */}
+              {abierta && (
+                <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 dark:border-slate-800 dark:bg-slate-950">
+                  {!cat.permitida && (
+                    <p className="py-2 text-sm text-slate-400">
+                      Activa la categoría «{cat.nombre}» para elegir sus aplicaciones.
+                    </p>
+                  )}
+                  {cat.items.map((item, i) => (
+                    <div
+                      key={item.nombre}
+                      className={`flex items-center gap-3 py-2.5 ${
+                        cat.permitida ? '' : 'pointer-events-none opacity-40'
+                      }`}
+                    >
+                      <span className="text-slate-300 dark:text-slate-600">•</span>
+                      <div className="flex-1">
+                        <div className="text-[15px] font-medium">{item.nombre}</div>
+                        <div
+                          className={`text-xs font-semibold ${
+                            cat.permitida && item.permitida
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          {cat.permitida && item.permitida ? 'Permitida' : 'Bloqueada'}
+                        </div>
+                      </div>
+                      <Toggle
+                        activo={item.permitida}
+                        etiqueta={item.nombre}
+                        onCambio={(v) => setItem(cat.clave, i, v)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <Toggle
-              activo={app.permitida}
-              etiqueta={app.nombre}
-              onCambio={(v) =>
-                setConfig((c) => ({
-                  ...c,
-                  apps: c.apps.map((a, j) => (j === i ? { ...a, permitida: v } : a)),
-                }))
-              }
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Tiempo de uso */}

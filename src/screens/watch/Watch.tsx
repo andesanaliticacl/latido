@@ -51,6 +51,7 @@ export function Watch() {
   const avisoPulsoAlto = useRef(false);
   const avisoPulsoBajo = useRef(false);
   const avisoBateria = useRef(false);
+  const avisoBateriaCritica = useRef(false);
   const watchId = useRef<number | null>(null);
   const virtualTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -232,10 +233,17 @@ export function Watch() {
         avisoPulsoBajo.current = false;
       }
 
-      // Batería baja (una sola vez)
+      // Batería baja y casi agotada (cada aviso una sola vez)
       if (s.bateria < 20 && !avisoBateria.current) {
         avisoBateria.current = true;
         void registrarEvento('battery_low', `Batería baja: ${s.bateria}%`);
+      }
+      if (s.bateria <= 10 && !avisoBateriaCritica.current) {
+        avisoBateriaCritica.current = true;
+        void registrarEvento(
+          'battery_low',
+          `🪫 Batería casi agotada: ${s.bateria}% — el reloj puede apagarse pronto`,
+        );
       }
     };
     void enviar();

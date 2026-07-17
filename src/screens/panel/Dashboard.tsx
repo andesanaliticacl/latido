@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useLatido } from '../../state/LatidoStore';
 import { MapView } from '../../components/MapView';
@@ -13,17 +14,60 @@ export function Dashboard() {
     useLatido();
 
   const posicion = ultima ? { lat: ultima.lat, lng: ultima.lng } : null;
-  const zonaActual = posicion ? zonasQueContienen(posicion, zonas)[0] : undefined;
+  const zonasContiene = posicion ? zonasQueContienen(posicion, zonas) : [];
+  const zonaSegura = zonasContiene.find((z) => z.kind === 'safe');
+  const zonaRiesgo = zonasContiene.find((z) => z.kind === 'risk');
   const pulsos = recientes.map((t) => t.heart_rate).filter((v) => v > 0);
   const recientesEventos = eventos.slice(0, 5);
 
   const calidadSenal = (s: number) =>
     s >= 75 ? 'Excelente' : s >= 50 ? 'Buena' : s >= 25 ? 'Regular' : 'Débil';
 
+  // Estado principal: emergencia manda; si no, refleja si está en un lugar seguro
+  const estado: {
+    icono: string;
+    valor: ReactNode;
+    detalle: string;
+    tono: 'normal' | 'ok' | 'atencion' | 'emergencia';
+  } = sosActivo
+    ? {
+        icono: '🚨',
+        valor: <span className="text-rose-600 dark:text-rose-400">¡EMERGENCIA!</span>,
+        detalle: 'Botón SOS activo — revisa el mapa ahora',
+        tono: 'emergencia',
+      }
+    : zonaSegura
+      ? {
+          icono: '✅',
+          valor: <span className="text-emerald-600 dark:text-emerald-400">En lugar seguro</span>,
+          detalle: `${zonaSegura.icon} Está en «${zonaSegura.name}»`,
+          tono: 'ok',
+        }
+      : zonaRiesgo
+        ? {
+            icono: '⚠️',
+            valor: <span className="text-rose-600 dark:text-rose-400">En zona de riesgo</span>,
+            detalle: `${zonaRiesgo.icon} Está en «${zonaRiesgo.name}»`,
+            tono: 'atencion',
+          }
+        : posicion
+          ? {
+              icono: '📍',
+              valor: <span className="text-amber-600 dark:text-amber-400">Fuera de lugar seguro</span>,
+              detalle: 'No se encuentra en un lugar seguro registrado',
+              tono: 'atencion',
+            }
+          : {
+              icono: '📍',
+              valor: 'Esperando ubicación',
+              detalle: 'El reloj aún no envía su posición',
+              tono: 'normal',
+            };
+
   return (
-    <div className="flex h-full gap-4 p-4">
-      {/* Mapa: el protagonista (~70%) */}
-      <div className="min-w-0 flex-[7]">
+    <div className="flex h-full flex-col gap-4 p-4 lg:flex-row">
+      {/* Mapa: el protagonista (~70% en escritorio, mitad de alto en celular) */}
+      <div className="h-[45vh] min-w-0 shrink-0 lg:h-auto lg:flex-[7]">
         <MapView
           posicion={posicion}
           recorrido={recorrido}
@@ -34,7 +78,7 @@ export function Dashboard() {
       </div>
 
       {/* Columna de estado en vivo */}
-      <div className="flex flex-[3] flex-col gap-3 overflow-y-auto pr-1">
+      <div className="flex flex-col gap-3 lg:flex-[3] lg:overflow-y-auto lg:pr-1">
         <StatCard
           icono={<span className="animate-heartbeat inline-block">❤️</span>}
           titulo="Frecuencia cardíaca"
@@ -58,10 +102,23 @@ export function Dashboard() {
 
         <div className="grid grid-cols-2 gap-3">
           <StatCard
-            icono="🔋"
+            icono={ultima && ultima.battery <= 10 ? '🪫' : '🔋'}
             titulo="Batería"
             valor={ultima ? `${ultima.battery}%` : '—'}
-            tono={ultima && ultima.battery < 20 ? 'atencion' : 'normal'}
+            detalle={
+              ultima && ultima.battery <= 10
+                ? '¡Casi agotada!'
+                : ultima && ultima.battery < 20
+                  ? 'Batería baja'
+                  : undefined
+            }
+            tono={
+              ultima && ultima.battery <= 10
+                ? 'emergencia'
+                : ultima && ultima.battery < 20
+                  ? 'atencion'
+                  : 'normal'
+            }
           />
           <StatCard
             icono="🚶"
@@ -96,23 +153,11 @@ export function Dashboard() {
         </div>
 
         <StatCard
-          icono="🚨"
-          titulo="Estado SOS"
-          valor={
-            sosActivo ? (
-              <span className="text-rose-600 dark:text-rose-400">¡EMERGENCIA!</span>
-            ) : (
-              <span className="text-emerald-600 dark:text-emerald-400">Todo tranquilo</span>
-            )
-          }
-          detalle={
-            zonaActual
-              ? `${zonaActual.icon} Está en «${zonaActual.name}»`
-              : posicion
-                ? 'Fuera de zonas conocidas'
-                : undefined
-          }
-          tono={sosActivo ? 'emergencia' : 'ok'}
+          icono={estado.icono}
+          titulo="Estado"
+          valor={estado.valor}
+          detalle={estado.detalle}
+          tono={estado.tono}
         />
 
         {/* Eventos recientes */}
